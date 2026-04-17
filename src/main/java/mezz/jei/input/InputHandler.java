@@ -8,6 +8,7 @@ import mezz.jei.api.recipe.IFocus;
 import mezz.jei.api.recipe.transfer.IAutocraftingHandler;
 import mezz.jei.bookmarks.BookmarkItem;
 import mezz.jei.bookmarks.BookmarkList;
+import mezz.jei.ingredients.group.CollapsedGroupIngredient;
 import mezz.jei.config.Config;
 import mezz.jei.config.IngredientBlacklistType;
 import mezz.jei.config.KeyBindings;
@@ -362,28 +363,34 @@ public class InputHandler {
             return false;
         }
 
-        if (bookmarkList.remove(clicked.getValue())) {
-            if (bookmarkList.isEmpty() && Config.isBookmarkOverlayEnabled()) {
+        Object value = clicked.getValue();
+
+        if (value instanceof BookmarkItem) {
+            boolean removed = bookmarkList.remove(value);
+            if (removed && bookmarkList.isEmpty() && Config.isBookmarkOverlayEnabled()) {
                 Config.toggleBookmarkEnabled();
             }
-
-            return true;
+            return removed;
         }
 
         if (!Config.isBookmarkOverlayEnabled()) {
             Config.toggleBookmarkEnabled();
         }
-        
+
         if (isRecipe) {
             RecipeLayout layout = recipesGui.getRecipeLayout(mouseX, mouseY);
             if (layout == null) {
                 return false;
             }
-            
             return layout.addToBookmarks();
         }
-        
-        return bookmarkList.add(new BookmarkItem<>(clicked.getValue()));
+
+        // Don't allow bookmarking collapsed groups directly — only individual items.
+        if (value instanceof CollapsedGroupIngredient) {
+            return false;
+        }
+
+        return bookmarkList.add(new BookmarkItem<>(value));
     }
 
     private boolean showRecipeOrUses(IFocus.Mode mode) {

@@ -30,9 +30,6 @@ import java.util.List;
  * plus a semi-transparent background to distinguish it from normal items.
  */
 public class CollapsedGroupRenderer implements IIngredientRenderer<CollapsedGroupIngredient> {
-	private static final int COLLAPSED_BG_COLOR = 0x33FFFFFF;
-	private static final int COLLAPSED_BORDER_COLOR = 0x55AAAAFF;
-
 	/** Singleton registered with the ingredient type system — {@code collapsedStack} is null. */
 	public static final CollapsedGroupRenderer INSTANCE = new CollapsedGroupRenderer(null);
 
@@ -78,13 +75,22 @@ public class CollapsedGroupRenderer implements IIngredientRenderer<CollapsedGrou
 	 * Count badge is drawn at 0.75× scale in orange in the bottom-right corner.
 	 */
 	private static void renderAt(Minecraft minecraft, CollapsedGroupIngredient ingredient, int x, int y) {
-		List<IIngredientListElement<?>> ingredients = ingredient.getIngredients();
+		List<IIngredientListElement<?>> ingredients = ingredient.getDisplayIngredients();
 		if (ingredients.isEmpty()) {
 			return;
 		}
 
+		GlStateManager.disableLighting();
+		GlStateManager.enableBlend();
+		GlStateManager.tryBlendFuncSeparate(
+				GlStateManager.SourceFactor.SRC_ALPHA,
+				GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+				GlStateManager.SourceFactor.ONE,
+				GlStateManager.DestFactor.ZERO
+		);
 		// Draw background tint to visually distinguish collapsed groups
-		GuiScreen.drawRect(x, y, x + 16, y + 16, COLLAPSED_BG_COLOR);
+		GuiScreen.drawRect(x, y, x + 16, y + 16, ingredient.getBackgroundColor());
+		GlStateManager.disableBlend();
 
 		if (ingredients.size() == 1) {
 			// Single item: render at full size
@@ -126,7 +132,7 @@ public class CollapsedGroupRenderer implements IIngredientRenderer<CollapsedGrou
 			GlStateManager.enableDepth();
 		}
 
-		drawCollapsedBorder(x, y);
+		drawCollapsedBorder(x, y, ingredient.getBorderColor());
 	}
 
 	/**
@@ -136,6 +142,7 @@ public class CollapsedGroupRenderer implements IIngredientRenderer<CollapsedGrou
 	private static void renderElementAt(Minecraft minecraft, IIngredientListElement<?> element, int x, int y, float scale) {
 		Object ingredient = element.getIngredient();
 		try {
+			RenderHelper.enableGUIStandardItemLighting();
 			GlStateManager.pushMatrix();
 			GlStateManager.translate(x, y, 0);
 			GlStateManager.scale(scale, scale, scale);
@@ -150,13 +157,22 @@ public class CollapsedGroupRenderer implements IIngredientRenderer<CollapsedGrou
 		}
 	}
 
-	private static void drawCollapsedBorder(int x, int y) {
+	private static void drawCollapsedBorder(int x, int y, int borderColor) {
+		GlStateManager.disableLighting();
+		GlStateManager.enableBlend();
+		GlStateManager.tryBlendFuncSeparate(
+				GlStateManager.SourceFactor.SRC_ALPHA,
+				GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+				GlStateManager.SourceFactor.ONE,
+				GlStateManager.DestFactor.ZERO
+		);
 		// Small triangle indicator in the top-left corner to show it's collapsible
 		GlStateManager.disableLighting();
 		GlStateManager.disableDepth();
-		GuiScreen.drawRect(x, y, x + 4, y + 1, COLLAPSED_BORDER_COLOR);
-		GuiScreen.drawRect(x, y, x + 1, y + 4, COLLAPSED_BORDER_COLOR);
+		GuiScreen.drawRect(x, y, x + 4, y + 1, borderColor);
+		GuiScreen.drawRect(x, y + 1, x + 1, y + 4, borderColor);
 		GlStateManager.enableDepth();
+		GlStateManager.disableBlend();
 	}
 
 	// --- IIngredientRenderer<CollapsedStack> implementation ---
@@ -188,7 +204,7 @@ public class CollapsedGroupRenderer implements IIngredientRenderer<CollapsedGrou
 	}
 
 	public void drawTooltip(Minecraft minecraft, int mouseX, int mouseY) {
-		List<IIngredientListElement<?>> ingredients = collapsedStack.getIngredients();
+		List<IIngredientListElement<?>> ingredients = collapsedStack.getDisplayIngredients();
 		if (ingredients.isEmpty()) return;
 
 		// Single-item group (e.g. search filtered to one result): show the item's native tooltip
